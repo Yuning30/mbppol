@@ -34,7 +34,7 @@ class CartPoleEnv(gym.Env):
             dtype=np.float32,
         )
 
-        self.action_space = gym.spaces.Box(-10, 10, dtype=np.float32)
+        self.action_space = gym.spaces.Box(-10, 10, dtype=np.float32, shape=(1, ))
         self.observation_space = gym.spaces.Box(-high, high, dtype=np.float32)
 
         self.init_space = gym.spaces.Box(low=-0.05, high=0.05, shape=(4,))
