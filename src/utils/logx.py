@@ -13,8 +13,10 @@ import tensorflow as tf
 import torch
 import os.path as osp, time, atexit, os
 import warnings
-from .mpi_tools import proc_id, mpi_statistics_scalar
-from .serialization_utils import convert_json
+print("here")
+from utils.mpi_tools import proc_id, mpi_statistics_scalar
+# from .mpi_tools import proc_id, mpi_statistics_scalar
+from utils.serialization_utils import convert_json
 
 color2num = dict(
     gray=30,

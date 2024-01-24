@@ -1,16 +1,33 @@
 #This code is modified for research purpose from Open AI Spinning Up implementation of PPO https://github.com/openai/spinningup (MIT LICENSE which allows for private use, attached  in ./src folder)
+
+print("entered")
 import numpy as np
 import torch
 from torch.optim import Adam
-import safety_gym
 import gym
+print("25 import")
+
 import time
+print("26 import")
+
 import  core
+print("27 import")
+
 from utils.logx import EpochLogger
+print("28 import")
+
 from utils.mpi_pytorch import setup_pytorch_for_mpi, sync_params, mpi_avg_grads
+print("29 import")
+
 from utils.mpi_tools import mpi_fork, mpi_avg, proc_id, mpi_statistics_scalar, num_procs
+print("30 import")
+
 from torch.nn.functional import softplus
+print("31 import")
+
 from env_utils import SafetyGymEnv
+print("half import")
+
 from mpi4py import MPI
 from aux import dist_xy, get_reward_cost, get_goal_flag, ego_xy, obs_lidar_pseudo, make_observation, generate_lidar
 import random
@@ -25,6 +42,10 @@ import sys
 import collections
 # import wandb
 
+import pdb
+from environments import envs
+
+print("finished import")
 class PPOBuffer:
     """
     A buffer for storing trajectories experienced by a PPO agent interacting
@@ -237,7 +258,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
     # Special function to avoid certain slowdowns from PyTorch + MPI combo.
     setup_pytorch_for_mpi()
-
+    # pdb.set_trace()
     # Set up logger and save configuration
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())
@@ -252,7 +273,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
     obs_dim = env.observation_space.shape
     #-----------------This dimension size is specific for our use-case in our modified Safety Gym envs-----------------------
-    obs_dim = (26,)
+    # obs_dim = (26,)
     #------------------------------------------------------------------------------------------------------------------------
     act_dim = env.action_space.shape
 
@@ -471,11 +492,11 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
     #-----------------------------------------------------------------------------------
 
     for epoch in range(outer_loop_epochs):
-        o, static = env.reset()
+        o= env.reset()
 
-        goal_pos = static['goal']
-        hazards_pos = static['hazards']
-        ld = dist_xy(o[40:],goal_pos)
+        # goal_pos = static['goal']
+        # hazards_pos = static['hazards']
+        # ld = dist_xy(o[40:],goal_pos)
         ep_ret = 0
         pep_ret = 0
         ep_cost = 0
@@ -483,12 +504,13 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
         ep_len = 0
         print("interacting with real environment")
         mix_real = int(1500/num_procs())
-        max_ep_len2 = 80
+        max_ep_len2 = 200
 
         for t in tqdm(range(max_training_steps)):
 
             #generate hazard lidar
-            obs_vec = generate_lidar(o,hazards_pos)
+            # obs_vec = generate_lidar(o,hazards_pos)
+            obs_vec = o
             obs_vec = np.array(obs_vec)
 
             ot = torch.as_tensor(obs_vec,device=cpudevice, dtype=torch.float32)
@@ -497,7 +519,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
             next_o, r, d, info = env.step(a)
 
-            if not d and not info['goal_met']:
+            if not d:
                 env_pool.push(o, a, r, info['cost'], next_o, d)
 
 
@@ -540,10 +562,10 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
             if terminal:
                 logger.store(EpRet=ep_ret, EpLen=ep_len, EpCost=ep_cost, PEPRet=pep_ret, PEPCost=pep_cost)
             if terminal or epoch_ended:
-                o,static= env.reset()
-                goal_pos = static['goal']
-                hazards_pos = static['hazards']
-                ld = dist_xy(o[40:],goal_pos)
+                o = env.reset()
+                # goal_pos = static['goal']
+                # hazards_pos = static['hazards']
+                # ld = dist_xy(o[40:],goal_pos)
                 ep_ret, ep_len =  0, 0
                 pep_ret,pep_cost  = 0,0
                 ep_cost = 0
@@ -572,10 +594,10 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
             predict_env2 = PredictEnv(env_model2, env_name, model_type)
 
-            o, static = env.reset()
-            goal_pos = static['goal']
-            hazards_pos = static['hazards']
-            ld = dist_xy(o[40:],goal_pos)
+            o = env.reset()
+            # goal_pos = static['goal']
+            # hazards_pos = static['hazards']
+            # ld = dist_xy(o[40:],goal_pos)
             dep_ret = 0
             dep_cost = 0
             dep_len = 0
@@ -590,9 +612,9 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
             for t in tqdm(range(local_steps_per_epoch - mix_real)):
 
                 #generate hazard lidar
-                obs_vec = generate_lidar(o,hazards_pos)
-                robot_pos = o[40:]
-                obs_vec = np.array(obs_vec)
+                # obs_vec = generate_lidar(o,hazards_pos)
+                # robot_pos = o[40:]
+                obs_vec = np.array(o)
 
                 otensor = torch.as_tensor(obs_vec,device=cpudevice, dtype=torch.float32)
                 a, v, vc, logp = ac.step(otensor)
@@ -600,7 +622,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
                 #--------USING LEARNED MODEL OF ENVIRONMENT TO GENERATE ROLLOUTS-----------------
                 next_o = predict_env2.step(o,a)
-                r,c,ld,goal_flag = get_reward_cost(ld, robot_pos, hazards_pos, goal_pos)
+                r,c = env.true_reward_cost(next_o)
 
 
 
@@ -619,11 +641,11 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                 timeout = dep_len == max_ep_len2
                 terminal = timeout
                 epoch_ended = t==local_steps_per_epoch-1
-                if terminal or epoch_ended or goal_flag:
+                if terminal or epoch_ended:
                     # if epoch_ended and not(terminal):
                     #     print('Warning: trajectory cut off by epoch at %d steps.'%ep_len, flush=True)
                     # if trajectory didn't reach terminal state, bootstrap value target
-                    if timeout or epoch_ended or goal_flag:
+                    if timeout or epoch_ended:
                         otensort = torch.as_tensor(obs_vec,device=cpudevice, dtype=torch.float32)
                         _, v, vc, _ = ac.step(otensort)
                         del otensort
@@ -634,10 +656,10 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                     if terminal:
                         # only save EpRet / EpLen if trajectory finished
                         logger.store(DynaEpRet=dep_ret,DynaEpCost=dep_cost)
-                    o, static  = env.reset()
-                    goal_pos = static['goal']
-                    hazards_pos = static['hazards']
-                    ld = dist_xy(o[40:],goal_pos)
+                    o = env.reset()
+                    # goal_pos = static['goal']
+                    # hazards_pos = static['hazards']
+                    # ld = dist_xy(o[40:],goal_pos)
                     dep_ret, dep_len, dep_cost = 0, 0, 0
 
 
@@ -657,27 +679,27 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                 winner=0
                 print("validating............")
                 for va in tqdm(range(len(valid_rets))):
-                    ov,staticv = env.reset()
-                    goal_posv = staticv['goal']
-                    hazards_posv = staticv['hazards']
-                    ldv = dist_xy(o[40:],goal_posv)
-                    for step_iter in range(75):
-                        obs_vecv = generate_lidar(ov,hazards_posv)
-                        robot_posv = ov[40:]
-                        obs_vecv = np.array(obs_vecv)
+                    ov  = env.reset()
+                    # goal_posv = staticv['goal']
+                    # hazards_posv = staticv['hazards']
+                    # ldv = dist_xy(o[40:],goal_posv)
+                    for step_iter in range(200):
+                        # obs_vecv = generate_lidar(ov,hazards_posv)
+                        # robot_posv = ov[40:]
+                        obs_vecv = np.array(ov)
                         ovt = torch.as_tensor(obs_vecv, device=cpudevice, dtype=torch.float32)
                         av, _, _,_ = ac.step(ovt)
                         del ovt
                         next_ov = predict_env2.step_elite(ov,av,va)
-                        rv,cv,ldv,goal_flagv = get_reward_cost(ldv, robot_posv, hazards_posv, goal_posv  )
+                        rv,cv = env.true_reward_cost(next_ov)
 
                         valid_rets[va]+= rv
                         ov = next_ov
-                        if goal_flagv:
-                            ov, staticv  = env.reset()
-                            goal_posv = staticv['goal']
-                            hazards_posv = staticv['hazards']
-                            ldv = dist_xy(ov[40:],goal_posv)
+                        # if goal_flagv:
+                            # ov, staticv  = env.reset()
+                            # goal_posv = staticv['goal']
+                            # hazards_posv = staticv['hazards']
+                            # ldv = dist_xy(ov[40:],goal_posv)
                     if valid_rets[va]>last_valid_rets[va]:
                         winner+=1
                 print(valid_rets,last_valid_rets)
@@ -737,6 +759,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
         logger.dump_tabular()
 
 if __name__ == '__main__':
+    # pdb.set_trace()
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='Safexp-PointGoal2-v0')
@@ -756,6 +779,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mpilist = []
     comm = MPI.COMM_WORLD
+    # pdb.set_trace()
     mpi_fork(args.cpu)  # run parallel code with mpi
     # mpilist.append(proc_id())
     # newdata = comm.gather(mpilist,root=0)
@@ -765,36 +789,44 @@ if __name__ == '__main__':
 
     from utils.run_utils import setup_logger_kwargs
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
+    pdb.set_trace()
     #=================safety gym benchmarks defaults==============================
     num_steps = 4.5e5
     steps_per_epoch = 30000
     epochs = int(num_steps / steps_per_epoch)
     #=============================================================================
     #---modified safety_gym-------------------------------------------------------
-    DEFAULT_ENV_CONFIG_POINT = dict(
-        action_repeat=1,
-        max_episode_length=750,
-        use_dist_reward=False,
-        stack_obs=False,
-    )
-    if "Point" in args.env:
-        robot = 'Point'
-        eplen = 750
-        num_steps = 4.5e5
-        steps_per_epoch = 30000
-        epochs = 60
-        DEFAULT_ENV_CONFIG_POINT['max_episode_length'] = eplen
-    elif "Car" in args.env:
-        robot = 'Car'
-        eplen = 750
-        DEFAULT_ENV_CONFIG_POINT['max_episode_length'] = eplen
-        num_steps = 4.5e5
-        steps_per_epoch = 30000
-        epochs = 60
-    env_config=DEFAULT_ENV_CONFIG_POINT
-    env = SafetyGymEnv(robot=robot, task="goal", level='2', seed=10, config=env_config)
-    state_dim, action_dim = env.observation_size, env.action_size
+    # DEFAULT_ENV_CONFIG_POINT = dict(
+    #     action_repeat=1,
+    #     max_episode_length=750,
+    #     use_dist_reward=False,
+    #     stack_obs=False,
+    # )
+    # if "Point" in args.env:
+    #     robot = 'Point'
+    #     eplen = 750
+    #     num_steps = 4.5e5
+    #     steps_per_epoch = 30000
+    #     epochs = 60
+    #     DEFAULT_ENV_CONFIG_POINT['max_episode_length'] = eplen
+    # elif "Car" in args.env:
+    #     robot = 'Car'
+    #     eplen = 750
+    #     DEFAULT_ENV_CONFIG_POINT['max_episode_length'] = eplen
+    #     num_steps = 4.5e5
+    #     steps_per_epoch = 30000
+    #     epochs = 60
+    # env_config=DEFAULT_ENV_CONFIG_POINT
+    # env = SafetyGymEnv(robot=robot, task="goal", level='2', seed=10, config=env_config)
+    env = envs.get_env_from_name(args.env)
+    # state_dim, action_dim = env.observation_size, env.action_size
 
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+    # pdb.set_trace()
+
+    # import pdb
+    # pdb.set_trace()
     if proc_id()==0:
         num_networks = 8
         num_elites = 6
@@ -814,5 +846,5 @@ if __name__ == '__main__':
 
     ppo(lambda : env, args.cost_limit, actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
-        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs,max_ep_len=750,
+        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs,max_ep_len=200,
         logger_kwargs=logger_kwargs,exp_name=args.exp_name,beta=args.beta)

@@ -8,7 +8,7 @@
 import numpy as np
 import re
 import gym
-import safety_gym
+# import safety_gym
 
 ROBOTS = ['Point','Car', 'Doggo']
 TASKS = ['Goal', 'Button']
