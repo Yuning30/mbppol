@@ -242,6 +242,8 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
     """
 
+    plot_log_file.write(f"max_len is {max_ep_len}\n")
+
     # Special function to avoid certain slowdowns from PyTorch + MPI combo.
     setup_pytorch_for_mpi()
     # pdb.set_trace()
@@ -768,7 +770,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta', type=float, default=1)
 
     # new arguments
-    parser.add_argument('--max_len', type=int, required=True)
+    # parser.add_argument('--max_len', type=int, required=True)
 
     args = parser.parse_args()
     plot_log_file_path = pathlib.Path(f"./results/{args.env}/")
@@ -844,6 +846,6 @@ if __name__ == '__main__':
 
     ppo(lambda : env, args.cost_limit, actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
-        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs, max_ep_len=args.max_len,
+        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs, max_ep_len=env._max_episode_steps,
         logger_kwargs=logger_kwargs,exp_name=args.exp_name,beta=args.beta, plot_log_file=plot_log_file)
     plot_log_file.close()

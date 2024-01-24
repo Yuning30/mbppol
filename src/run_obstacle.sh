@@ -1,0 +1,1 @@
+python3 src/mbppo_lagrangian.py --env obstacle -seed 0
