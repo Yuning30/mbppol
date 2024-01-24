@@ -566,7 +566,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
         train_predict_model(env_pool, predict_env)
         torch.save(env_model,exp_name+"env_model.pkl")
-        env_name = "safepg2"
+        # env_name = "safepg2"
         model_type = 'pytorch'
         #predict_env2 = PredictEnv(env_model2, env_name, model_type)
         #----------------------------------------------------------------------
@@ -847,5 +847,5 @@ if __name__ == '__main__':
     ppo(lambda : env, args.cost_limit, actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
         seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs, max_ep_len=env._max_episode_steps,
-        logger_kwargs=logger_kwargs,exp_name=args.exp_name,beta=args.beta, plot_log_file=plot_log_file)
+        logger_kwargs=logger_kwargs,exp_name=args.env,beta=args.beta, plot_log_file=plot_log_file)
     plot_log_file.close()
