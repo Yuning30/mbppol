@@ -5,29 +5,13 @@ import numpy as np
 import torch
 from torch.optim import Adam
 import gym
-print("25 import")
-
 import time
-print("26 import")
-
 import  core
-print("27 import")
-
 from utils.logx import EpochLogger
-print("28 import")
-
 from utils.mpi_pytorch import setup_pytorch_for_mpi, sync_params, mpi_avg_grads
-print("29 import")
-
 from utils.mpi_tools import mpi_fork, mpi_avg, proc_id, mpi_statistics_scalar, num_procs
-print("30 import")
-
 from torch.nn.functional import softplus
-print("31 import")
-
 from env_utils import SafetyGymEnv
-print("half import")
-
 from mpi4py import MPI
 from aux import dist_xy, get_reward_cost, get_goal_flag, ego_xy, obs_lidar_pseudo, make_observation, generate_lidar
 import random
@@ -36,10 +20,12 @@ from predict_env import PredictEnv
 from replay_memory import ReplayMemory
 from tqdm import tqdm
 import sys
+import pathlib
 #import lightgbm as lgb
 #from sklearn.ensemble import GradientBoostingClassifier
 #from sklearn.metrics import mean_squared_error,roc_auc_score,precision_score
 import collections
+import os
 # import wandb
 
 import pdb
@@ -152,7 +138,7 @@ class PPOBuffer:
 def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.1, pi_lr=3e-4,
         vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
-        target_kl=0.01, logger_kwargs=dict(), save_freq=1,exp_name='default',beta=1):
+        target_kl=0.01, logger_kwargs=dict(), save_freq=1,exp_name='default',beta=1, plot_log_file=None):
     """
     Proximal Policy Optimization (by clipping),
 
@@ -504,7 +490,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
         ep_len = 0
         print("interacting with real environment")
         mix_real = int(1500/num_procs())
-        max_ep_len2 = 200
+        max_ep_len2 = max_ep_len
 
         for t in tqdm(range(max_training_steps)):
 
@@ -540,6 +526,8 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
             o = next_o
 
             timeout = ep_len == max_ep_len
+            if timeout:
+                plot_log_file.write(f"Real episode: ep_ret: {ep_ret}, ep_cost: {ep_cost}, ep_len: {ep_len}\n")
             terminal = d or timeout
             epoch_ended = t==max_training_steps-1
 
@@ -639,6 +627,9 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
                 # Model horizon (H)  = max_ep_len2
                 timeout = dep_len == max_ep_len2
+                if timeout:
+                    plot_log_file.write(f"Simulated episode: ep_ret: {dep_ret}, ep_cost: {dep_cost}, ep_len: {dep_len}\n")
+
                 terminal = timeout
                 epoch_ended = t==local_steps_per_epoch-1
                 if terminal or epoch_ended:
@@ -683,7 +674,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                     # goal_posv = staticv['goal']
                     # hazards_posv = staticv['hazards']
                     # ldv = dist_xy(o[40:],goal_posv)
-                    for step_iter in range(200):
+                    for step_iter in range(max_ep_len):
                         # obs_vecv = generate_lidar(ov,hazards_posv)
                         # robot_posv = ov[40:]
                         obs_vecv = np.array(ov)
@@ -773,10 +764,17 @@ if __name__ == '__main__':
     parser.add_argument('--steps', type=int, default=4000)
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--exp_name', type=str, default='ppo')
-    parser.add_argument('--cost_limit', type=int, default=18)
+    parser.add_argument('--cost_limit', type=int, default=0)
     parser.add_argument('--beta', type=float, default=1)
 
+    # new arguments
+    parser.add_argument('--max_len', type=int, required=True)
+
     args = parser.parse_args()
+    plot_log_file_path = pathlib.Path(f"./results/{args.env}/")
+    plot_log_file_path.mkdir(parents=True, exist_ok=True)
+    plot_log_file = open(os.path.join(plot_log_file_path, f"seed_{args.seed}.txt"), "w")
+
     mpilist = []
     comm = MPI.COMM_WORLD
     # pdb.set_trace()
@@ -789,7 +787,7 @@ if __name__ == '__main__':
 
     from utils.run_utils import setup_logger_kwargs
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
-    pdb.set_trace()
+    # pdb.set_trace()
     #=================safety gym benchmarks defaults==============================
     num_steps = 4.5e5
     steps_per_epoch = 30000
@@ -846,5 +844,6 @@ if __name__ == '__main__':
 
     ppo(lambda : env, args.cost_limit, actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), gamma=args.gamma,
-        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs,max_ep_len=200,
-        logger_kwargs=logger_kwargs,exp_name=args.exp_name,beta=args.beta)
+        seed=args.seed, steps_per_epoch=steps_per_epoch, epochs=epochs, max_ep_len=args.max_len,
+        logger_kwargs=logger_kwargs,exp_name=args.exp_name,beta=args.beta, plot_log_file=plot_log_file)
+    plot_log_file.close()
