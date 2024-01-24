@@ -67,7 +67,7 @@ class ObstacleEnv(gym.Env):
             reward -= 20
         return reward
 
-    def true_reward(self, state):
+    def true_reward_cost(self, state):
         x, y = state[0], state[1]
         reward = -1 * ((x-3)**2 + (y-3)**2)
         if self.unsafe(state):
