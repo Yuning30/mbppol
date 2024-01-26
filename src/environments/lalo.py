@@ -128,8 +128,8 @@ class LaloeEnv(gym.Env):
             reward -= 10
             cost = 1
         print(reward, cost)
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         return reward, cost
 
     def seed(self, seed: int):
