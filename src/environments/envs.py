@@ -39,5 +39,8 @@ def get_env_from_name(name):
     if name == "cartpole_swing":
         from .cartpole_swing import CartPoleSwingEnv
         return CartPoleSwingEnv()
+    if name == "lalo":
+        from .lalo import LaloeEnv
+        return LaloeEnv()
     else:
         raise RuntimeError("Unkonwn environment: " + name)

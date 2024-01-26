@@ -614,7 +614,13 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
 
                 #--------USING LEARNED MODEL OF ENVIRONMENT TO GENERATE ROLLOUTS-----------------
                 next_o = predict_env2.step(o,a)
-                r,c = env.true_reward_cost(next_o)
+                # print(exp_name)
+                # pdb.set_trace()
+
+                if exp_name == "lalo":
+                    r,c = env.true_reward_cost(next_o, a)
+                else:
+                    r,c = env.true_reward_cost(next_o)
 
 
 
