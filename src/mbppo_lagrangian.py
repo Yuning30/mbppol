@@ -692,8 +692,10 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                         av, _, _,_ = ac.step(ovt)
                         del ovt
                         next_ov = predict_env2.step_elite(ov,av,va)
-                        rv,cv = env.true_reward_cost(next_ov)
-
+                        if exp_name == "lalo":
+                            rv,cv = env.true_reward_cost(next_ov, av)
+                        else:
+                            rv,cv = env.true_reward_cost(next_ov)
                         valid_rets[va]+= rv
                         ov = next_ov
                         # if goal_flagv:

@@ -119,7 +119,7 @@ class LaloeEnv(gym.Env):
         return reward
     
     def true_reward_cost(self, state, action):
-        print(action)
+        # print(action)
 
         fxu = self.f(state, action[0])
         reward = -1 * np.linalg.norm(fxu).item()
@@ -127,7 +127,7 @@ class LaloeEnv(gym.Env):
         if self.unsafe(state):
             reward -= 10
             cost = 1
-        print(reward, cost)
+        # print(reward, cost)
         # import pdb
         # pdb.set_trace()
         return reward, cost
