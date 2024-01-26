@@ -67,6 +67,7 @@ class CarRacingEnv(gym.Env):
         return False
 
     def true_reward(self, state):
+        corner = False
         x, y = state[0], state[1]
         if corner:
             reward = -1 * (x**2 + y**2)
@@ -75,6 +76,18 @@ class CarRacingEnv(gym.Env):
         if self.unsafe(state):
             reward -= 20
         return reward
+
+    def true_reward_cost(self, state):
+        corner = False
+        x, y = state[0], state[1]
+        if corner:
+            reward = -1 * (x**2 + y**2)
+        else:
+            reward = -1 * ((x-3)**2 + (y-3)**2) - 6
+        cost = 1 if self.unsafe(state) else 0
+        if self.unsafe(state):
+            reward -= 20
+        return reward, cost
 
     def seed(self, seed: int):
         self.action_space.seed(seed)
