@@ -243,6 +243,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
     """
 
     plot_log_file.write(f"max_len is {max_ep_len}\n")
+    plot_log_file.flush()
 
     # Special function to avoid certain slowdowns from PyTorch + MPI combo.
     setup_pytorch_for_mpi()
@@ -530,6 +531,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
             timeout = ep_len == max_ep_len
             if timeout:
                 plot_log_file.write(f"Real episode: ep_ret: {ep_ret}, ep_cost: {ep_cost}, ep_len: {ep_len}\n")
+                plot_log_file.flush()
             terminal = d or timeout
             epoch_ended = t==max_training_steps-1
 
@@ -631,7 +633,7 @@ def ppo(env_fn,cost_limit, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), s
                 timeout = dep_len == max_ep_len2
                 if timeout:
                     plot_log_file.write(f"Simulated episode: ep_ret: {dep_ret}, ep_cost: {dep_cost}, ep_len: {dep_len}\n")
-
+                    plot_log_file.flush()
                 terminal = timeout
                 epoch_ended = t==local_steps_per_epoch-1
                 if terminal or epoch_ended:
